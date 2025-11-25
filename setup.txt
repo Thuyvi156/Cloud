@@ -7,153 +7,54 @@ function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function randomPhone() {
-  return "0" + Math.floor(900000000 + Math.random() * 99999999);
+function randomCustomer() {
+  return "CUST-" + Math.floor(100000 + Math.random() * 900000);
 }
 
 async function main() {
   const producer = new EventHubProducerClient(connectionString, eventHubName);
 
-  const cellTowers = [
-    "HCM-Q1", "HCM-Q3", "HCM-Q7", "HCM-BinhThanh", "HCM-ThuDuc",
-    "HN-CauGiay", "HN-HoangMai", "HN-TayHo",
-    "DN-HaiChau", "DN-SonTra"
+  const productCatalog = [
+    { ProductID: "P101", Name: "iPhone 14", Category: "Electronics", Price: 900 },
+    { ProductID: "P102", Name: "AirPods Pro 2", Category: "Accessories", Price: 250 },
+    { ProductID: "P103", Name: "MacBook Air M2", Category: "Laptop", Price: 1200 },
+    { ProductID: "P104", Name: "Sony WH-1000XM5", Category: "Accessories", Price: 320 },
+    { ProductID: "P105", Name: "Nike Air Force 1", Category: "Fashion", Price: 110 },
+    { ProductID: "P106", Name: "Robot hút bụi Xiaomi", Category: "Home", Price: 210 },
+    { ProductID: "P107", Name: "Nồi chiên không dầu", Category: "Home", Price: 80 }
   ];
 
-  const countries = ["US", "UK", "JP", "KR", "AU", "FR"];
+  const countries = ["VN", "US", "JP", "AU", "UK", "SG", "KR"];
 
-  console.log("🔄 Sending enhanced telecom call records...");
+  console.log("Sending real-time e-commerce orders...");
 
   for (let i = 0; i < 200; i++) {
 
-    // Random choose fraud pattern
-    const fraudType = pick([
-      "normal",
-      "short-spam",
-      "international",
-      "simbox",
-      "stolen",
-      "robocall"
-    ]);
+    const product = pick(productCatalog);
+    
+    const order = {
+      OrderID: "ORD-" + Date.now() + "-" + i,
+      ProductID: product.ProductID,
+      ProductName: product.Name,
+      Category: product.Category,
+      Price: product.Price,
+      Quantity: Math.floor(Math.random() * 5) + 1,
+      TotalAmount: 0,
+      CustomerID: randomCustomer(),
+      Country: pick(countries),
+      Timestamp: new Date().toISOString()
+    };
 
-    let record = {};
-
-    switch (fraudType) {
-
-      /* ----------------------
-         1. NORMAL CALL
-      ----------------------- */
-      case "normal":
-        record = {
-          Caller: randomPhone(),
-          Receiver: randomPhone(),
-          Duration: Math.floor(Math.random() * 300),
-          CallType: "normal",
-          CellTower: pick(cellTowers),
-          Country: "VN",
-          Timestamp: new Date().toISOString()
-        };
-        break;
-
-
-      /* ----------------------
-         2. SHORT SPAM CALL 
-         => Duration nhỏ + call liên tục
-      ----------------------- */
-      case "short-spam":
-        record = {
-          Caller: randomPhone(),
-          Receiver: randomPhone(),
-          Duration: Math.floor(Math.random() * 5), // spam call <5s
-          CallType: "normal",
-          CellTower: pick(cellTowers),
-          Country: "VN",
-          Timestamp: new Date().toISOString(),
-          Flag: "spam-short"
-        };
-        break;
-
-
-      /* ----------------------
-         3. INTERNATIONAL FRAUD
-         => Mẫu cho fraud quốc tế
-      ----------------------- */
-      case "international":
-        record = {
-          Caller: randomPhone(),
-          Receiver: randomPhone(),
-          Duration: Math.floor(Math.random() * 800) + 200, // rất dài
-          CallType: "international",
-          CellTower: pick(cellTowers),
-          Country: pick(countries),
-          Timestamp: new Date().toISOString(),
-          Flag: "fraud-international"
-        };
-        break;
-
-
-      /* ----------------------
-         4. SIMBOX FRAUD
-         => 1 Caller nhảy địa lý xa bất thường
-      ----------------------- */
-      case "simbox":
-        record = {
-          Caller: randomPhone(),
-          Receiver: randomPhone(),
-          Duration: Math.floor(Math.random() * 200),
-          CallType: "normal",
-          CellTower: pick(["HCM-Q1", "HN-TayHo", "DN-SonTra"]), // Jump xa
-          Country: "VN",
-          Timestamp: new Date().toISOString(),
-          Flag: "simbox-location-jump"
-        };
-        break;
-
-
-      /* ----------------------
-         5. STOLEN PHONE
-         => roaming + nhanh đổi vị trí
-      ----------------------- */
-      case "stolen":
-        record = {
-          Caller: randomPhone(),
-          Receiver: randomPhone(),
-          Duration: Math.floor(Math.random() * 100),
-          CallType: "roaming",
-          CellTower: pick(cellTowers),
-          Country: pick(countries),
-          Timestamp: new Date().toISOString(),
-          Flag: "stolen-phone"
-        };
-        break;
-
-
-      /* ----------------------
-         6. ROBO CALL
-         => cùng một caller spam hàng loạt receiver
-      ----------------------- */
-      case "robocall":
-        record = {
-          Caller: "0909-ROBO-CENTER",
-          Receiver: randomPhone(),
-          Duration: Math.floor(Math.random() * 10),
-          CallType: "normal",
-          CellTower: pick(cellTowers),
-          Country: "VN",
-          Timestamp: new Date().toISOString(),
-          Flag: "robocall"
-        };
-        break;
-    }
+    order.TotalAmount = order.Quantity * order.Price;
 
     const batch = await producer.createBatch();
-    batch.tryAdd({ body: record });
+    batch.tryAdd({ body: order });
     await producer.sendBatch(batch);
 
-    console.log(record);
+    console.log(order);
   }
 
-  console.log("DONE: Sent 200 diversified call records!");
+  console.log("DONE: Sent 200 e-commerce orders!");
   await producer.close();
 }
 
