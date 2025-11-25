@@ -94,6 +94,6 @@ $conString = $conStrings.PrimaryConnectionString
 $javascript = Get-Content -Path "setup.txt" -Raw
 $javascript = $javascript.Replace("EVENTHUBCONNECTIONSTRING", $conString)
 $javascript = $javascript.Replace("EVENTHUBNAME",$eventHubName)
-Set-Content -Path "callclient.js.js" -Value $javascript
+Set-Content -Path "callclient.js" -Value $javascript
 
 write-host "Script completed at $(Get-Date)"
