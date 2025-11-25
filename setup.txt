@@ -3,32 +3,158 @@ const { EventHubProducerClient } = require("@azure/event-hubs");
 const connectionString = "EVENTHUBCONNECTIONSTRING";
 const eventHubName = "EVENTHUBNAME";
 
-async function main() {
-
-  // Create a producer client to send messages to the event hub.
-  const producer = new EventHubProducerClient(connectionString, eventHubName);
-
-
-  var i;
-
-  for (i = 0; i < 100; i++)
-  {
-
-    // Generate a random order
-    var p = Math.floor(Math.random() * 10) + 1;
-    var q = Math.floor(Math.random() * 3) + 1;
-    var batch = await producer.createBatch();
-    batch.tryAdd({ body: {ProductID:p, Quantity:q} });   
-
-    // Send the batch to the event hub.
-    await producer.sendBatch(batch);
-
-    console.log("{ProductID:" + p + ", Quantity:" + q + "}");
-  }
-  // Close the producer client.
-    await producer.close();
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
-main().catch((err) => {
-  console.log("Error occurred: ", err);
-});
+function randomPhone() {
+  return "0" + Math.floor(900000000 + Math.random() * 99999999);
+}
+
+async function main() {
+  const producer = new EventHubProducerClient(connectionString, eventHubName);
+
+  const cellTowers = [
+    "HCM-Q1", "HCM-Q3", "HCM-Q7", "HCM-BinhThanh", "HCM-ThuDuc",
+    "HN-CauGiay", "HN-HoangMai", "HN-TayHo",
+    "DN-HaiChau", "DN-SonTra"
+  ];
+
+  const countries = ["US", "UK", "JP", "KR", "AU", "FR"];
+
+  console.log("🔄 Sending enhanced telecom call records...");
+
+  for (let i = 0; i < 200; i++) {
+
+    // Random choose fraud pattern
+    const fraudType = pick([
+      "normal",
+      "short-spam",
+      "international",
+      "simbox",
+      "stolen",
+      "robocall"
+    ]);
+
+    let record = {};
+
+    switch (fraudType) {
+
+      /* ----------------------
+         1. NORMAL CALL
+      ----------------------- */
+      case "normal":
+        record = {
+          Caller: randomPhone(),
+          Receiver: randomPhone(),
+          Duration: Math.floor(Math.random() * 300),
+          CallType: "normal",
+          CellTower: pick(cellTowers),
+          Country: "VN",
+          Timestamp: new Date().toISOString()
+        };
+        break;
+
+
+      /* ----------------------
+         2. SHORT SPAM CALL 
+         => Duration nhỏ + call liên tục
+      ----------------------- */
+      case "short-spam":
+        record = {
+          Caller: randomPhone(),
+          Receiver: randomPhone(),
+          Duration: Math.floor(Math.random() * 5), // spam call <5s
+          CallType: "normal",
+          CellTower: pick(cellTowers),
+          Country: "VN",
+          Timestamp: new Date().toISOString(),
+          Flag: "spam-short"
+        };
+        break;
+
+
+      /* ----------------------
+         3. INTERNATIONAL FRAUD
+         => Mẫu cho fraud quốc tế
+      ----------------------- */
+      case "international":
+        record = {
+          Caller: randomPhone(),
+          Receiver: randomPhone(),
+          Duration: Math.floor(Math.random() * 800) + 200, // rất dài
+          CallType: "international",
+          CellTower: pick(cellTowers),
+          Country: pick(countries),
+          Timestamp: new Date().toISOString(),
+          Flag: "fraud-international"
+        };
+        break;
+
+
+      /* ----------------------
+         4. SIMBOX FRAUD
+         => 1 Caller nhảy địa lý xa bất thường
+      ----------------------- */
+      case "simbox":
+        record = {
+          Caller: randomPhone(),
+          Receiver: randomPhone(),
+          Duration: Math.floor(Math.random() * 200),
+          CallType: "normal",
+          CellTower: pick(["HCM-Q1", "HN-TayHo", "DN-SonTra"]), // Jump xa
+          Country: "VN",
+          Timestamp: new Date().toISOString(),
+          Flag: "simbox-location-jump"
+        };
+        break;
+
+
+      /* ----------------------
+         5. STOLEN PHONE
+         => roaming + nhanh đổi vị trí
+      ----------------------- */
+      case "stolen":
+        record = {
+          Caller: randomPhone(),
+          Receiver: randomPhone(),
+          Duration: Math.floor(Math.random() * 100),
+          CallType: "roaming",
+          CellTower: pick(cellTowers),
+          Country: pick(countries),
+          Timestamp: new Date().toISOString(),
+          Flag: "stolen-phone"
+        };
+        break;
+
+
+      /* ----------------------
+         6. ROBO CALL
+         => cùng một caller spam hàng loạt receiver
+      ----------------------- */
+      case "robocall":
+        record = {
+          Caller: "0909-ROBO-CENTER",
+          Receiver: randomPhone(),
+          Duration: Math.floor(Math.random() * 10),
+          CallType: "normal",
+          CellTower: pick(cellTowers),
+          Country: "VN",
+          Timestamp: new Date().toISOString(),
+          Flag: "robocall"
+        };
+        break;
+    }
+
+    const batch = await producer.createBatch();
+    batch.tryAdd({ body: record });
+    await producer.sendBatch(batch);
+
+    console.log(record);
+  }
+
+  console.log("DONE: Sent 200 diversified call records!");
+  await producer.close();
+}
+
+main().catch((err) => console.log("ERROR:", err));
